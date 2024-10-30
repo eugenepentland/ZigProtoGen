@@ -35,6 +35,9 @@ pub fn build(b: *std.Build) void {
     const snek = b.dependency("snek", .{});
     exe.root_module.addImport("snek", snek.module("snek"));
 
+    const mustache = b.dependency("mustache", .{});
+    exe.root_module.addImport("mustache", mustache.module("mustache"));
+
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.
     // This is not necessary, however, if the application depends on other installed

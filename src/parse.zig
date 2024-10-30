@@ -40,7 +40,7 @@ const ParameterInfo = struct {
     }
 };
 
-const AstEmitter = struct {
+pub const AstEmitter = struct {
     ast: *std.zig.Ast,
     allocator: std.mem.Allocator,
     function_infos: std.ArrayList(FunctionInfo) = undefined,
@@ -51,6 +51,7 @@ const AstEmitter = struct {
             .allocator = allocator,
             .ast = ast,
             .function_infos = std.ArrayList(FunctionInfo).init(allocator),
+            .struct_infos = std.ArrayList(StructInfo).init(allocator),
         };
     }
 
@@ -68,7 +69,9 @@ const AstEmitter = struct {
     }
 
     pub fn emitRoot(self: *@This()) !void {
-        for (0..self.ast.nodes.len) |i| {
+        const node_len = self.ast.nodes.len;
+        std.log.info("Reading through {any} nodes", .{node_len});
+        for (0..node_len) |i| {
             const idx: u32 = @intCast(i);
             try self.emitNode(idx);
         }
@@ -76,14 +79,9 @@ const AstEmitter = struct {
 
     fn emitNode(self: *@This(), node_idx: std.zig.Ast.Node.Index) !void {
         const n = self.ast.nodes.get(node_idx);
-        std.log.info("Tag: {any}", .{n.tag});
+        const node_slice = self.ast.tokenSlice(node_idx);
+        std.log.info("{any}. Name: {s}", .{n.tag, node_slice});
         switch (n.tag) {
-            .fn_decl => {
-                try self.fnDecl(node_idx);
-            },
-            .identifier => {
-                try self.structProto(node_idx);
-            },
             else => {},
         }
     }
@@ -107,7 +105,7 @@ const AstEmitter = struct {
         // Get struct name
         const name_token_idx = 2;
         const name_slice = self.ast.tokenSlice(name_token_idx);
-        std.log.info("proto {s} {any} {any}", .{ name_slice, idx, node });
+        std.log.info("name: {s}. id: {any}, node: {any}", .{ name_slice, idx, node });
         //std.log.info("{any}", .{struct_node});
 
         //struct_info.name = try self.copySlice(name_slice);

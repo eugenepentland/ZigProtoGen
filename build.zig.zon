@@ -32,6 +32,10 @@
             .url = "https://github.com/BitlyTwiser/snek/archive/refs/tags/v0.1.0.tar.gz",
             .hash = "1220ca47f02a4dbfffa8b24e242b7f4d9af0690e1dc14fc2c2475d74ceeec9150ee1",
         },
+        .mustache = .{
+            .url = "https://github.com/batiati/mustache-zig/archive/5f609d0158f6c5635328ae603b38c351aa15b121.tar.gz",
+            .hash = "12205cc30ed18ea297284eb815e8b5dfa61b57f22ab53762c78a20c042027c05c056",
+        },
     },
 
     // Specifies the set of files and directories that are included in this package.
