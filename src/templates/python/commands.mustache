@@ -1,0 +1,42 @@
+import struct
+
+{{#messages}}
+class {{name}}:
+    def __init__(self, {{#header.fields}}{{^is_const}}{{field_name}},{{/is_const}}{{/header.fields}}{{#fields}}{{field_name}}{{^last}}, {{/last}}{{/fields}} message_id = {{id}}):
+        # Init all of the fields
+{{#header.fields}}
+        self.{{field_name}} = {{field_name}}
+{{/header.fields}}
+{{#fields}}
+        {{^is_struct}}self.{{field_name}} = {{field_name}}{{/is_struct}}
+{{/fields}}
+    
+    def serialize(self) -> bytes:
+        # Pack integers into a binary format
+        # '<' indicates little-endian, 'B' is for unsigned char (1 byte)
+        return struct.pack('{{#header.fields}}{{#is_u8}}B{{/is_u8}}{{#is_u16}}H{{/is_u16}}{{/header.fields}}{{#fields}}{{#is_u8}}B{{/is_u8}}{{#is_u16}}H{{/is_u16}}{{/fields}}', {{#header.fields}}self.{{field_name}}, {{/header.fields}}{{#fields}}{{^is_struct}}self.{{field_name}}, {{/is_struct}}{{/fields}})
+
+
+    @classmethod
+    def deserialize(cls, data: bytes):
+        # Unpack binary data back into integers
+        {{#header.fields}}{{field_name}}, {{/header.fields}}{{#fields}}{{^is_struct}}{{field_name}}, {{/is_struct}}{{/fields}} = struct.unpack('{{#header.fields}}{{#is_u8}}B{{/is_u8}}{{#is_u16}}H{{/is_u16}}{{/header.fields}}{{#fields}}{{#is_u8}}B{{/is_u8}}{{#is_u16}}H{{/is_u16}}{{/fields}}', data)
+        return cls({{#header.fields}}{{^is_const}}{{field_name}}, {{/is_const}}{{/header.fields}}{{#fields}}{{^is_struct}}{{field_name}}, {{/is_struct}}{{/fields}}message_id)
+
+{{/messages}}
+
+def readMessage(buff: bytes):
+    messages = {
+        {{#messages}}
+        {{id}}: {{name}},
+        {{/messages}}
+    }
+
+    message_id = struct.unpack_from("B", buff, offset=0)[0]
+
+    if not message_id in messages:
+        return
+
+    message = messages[message_id]
+
+    return message.deserialize(buff)

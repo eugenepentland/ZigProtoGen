@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSerial with TailwindCSS</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { formGenerator } from "./formGenerator.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      window.formData = {}; // Global object to hold form data
+      formGenerator.generateForms("dynamicForms", window.formData);
+    });
+  </script>
+</head>
+<body class="bg-gray-100">
+  <div class="p-8 max-w-3xl mx-auto">
+    <h1 class="text-3xl font-bold mb-4">WebSerial Example</h1>
+    <p class="mb-6">Click "Connect" to open a serial port. Fill out the form and submit to send data through the serial connection.</p>
+
+    <div class="flex space-x-4 mb-6">
+      <button id="connectBtn" class="btn btn-primary">Connect</button>
+      <button id="disconnectBtn" class="btn btn-secondary" disabled>Disconnect</button>
+    </div>
+
+    <div id="dynamicForms">
+      <!-- Multiple forms will be generated here -->
+    </div>
+
+    <div class="mt-6">
+      <h2 class="text-lg font-bold">Log</h2>
+      <textarea id="log" class="textarea textarea-bordered w-full h-48" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    let port = null;
+    let writer = null;
+    let reader = null;
+
+    const log = (message) => {
+      const logElement = document.getElementById("log");
+      logElement.value += `${message}\n`;
+      logElement.scrollTop = logElement.scrollHeight;
+    };
+
+    const connectSerial = async () => {
+      try {
+        port = await navigator.serial.requestPort({});
+        await port.open({
+          baudRate: 115200,
+          dataBits: 8,
+          parity: "none",
+          stopBits: 1,
+          flowControl: "none",
+        });
+
+        writer = port.writable.getWriter();
+        reader = port.readable.getReader();
+
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("disconnectBtn").disabled = false;
+
+        log("Connected to serial port.");
+      } catch (err) {
+        log(`Error connecting: ${err.message}`);
+      }
+    };
+
+    const disconnectSerial = async () => {
+      if (port) {
+        if (writer) writer.releaseLock();
+        if (reader) reader.releaseLock();
+        await port.close();
+
+        port = null;
+        writer = null;
+        reader = null;
+
+        document.getElementById("connectBtn").disabled = false;
+        document.getElementById("disconnectBtn").disabled = true;
+
+        log("Disconnected from serial port.");
+      }
+    };
+
+    const submitForm = async (event, formId) => {
+        event.preventDefault(); // Prevent form submission from refreshing the page
+
+        try {
+            if (!writer) {
+            log("Serial port is not connected.");
+            return;
+            }
+
+            // Dynamically create byteArray from formData fields for the specific form
+            const byteArray = Object.values(window.formData[formId]).map((value) => parseInt(value, 10));
+
+            // Send the byte array through the serial connection
+            await writer.write(new Uint8Array(byteArray));
+            log(`Form ${formId} Sent: [${byteArray.join(", ")}]`);
+
+            // Read data back from the serial device
+            const { value, done } = await reader.read();
+            if (done) {
+            log(`Form ${formId}: No data received; stream closed.`);
+            return;
+            }
+            if (value) {
+            const receivedBytes = Array.from(value);
+            log(`Form ${formId} Received: [${receivedBytes.join(", ")}]`);
+            }
+        } catch (err) {
+            log(`Error sending or reading data for form ${formId}: ${err.message}`);
+        }
+    };
+
+
+    document.getElementById("connectBtn").addEventListener("click", connectSerial);
+    document.getElementById("disconnectBtn").addEventListener("click", disconnectSerial);
+
+    document.addEventListener("submit", (event) => {
+      const formId = event.target.id; // Get the form ID
+      submitForm(event, formId);
+    });
+  </script>
+</body>
+</html>

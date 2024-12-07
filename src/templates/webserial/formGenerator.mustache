@@ -1,0 +1,89 @@
+export const formGenerator = {
+    forms: [
+        {{#messages}}
+        {
+            formId: "{{name}}",
+            fields: [
+                {{#fields}}{{^is_struct}}
+                { label: "{{field_name}}", type: "{{field_type}}", key: "{{field_name}}",{{#is_const}} value: {{field_value}}, hidden: true {{/is_const}} },
+                {{/is_struct}}{{/fields}}
+            ],
+        },
+        {{/messages}}
+    ],
+    
+    generateForms(containerId, formData) {
+        const formContainer = document.getElementById(containerId);
+        formContainer.innerHTML = ""; // Clear any existing content
+
+        this.forms.forEach((form) => {
+            // Create a container for each form
+            const formWrapper = document.createElement("div");
+            formWrapper.className = "form-wrapper mb-8";
+
+            // Add a title for the form using the formId
+            const formTitle = document.createElement("h2");
+            formTitle.textContent = `Form: ${form.formId}`;
+            formTitle.className = "text-xl font-bold mb-4";
+            formWrapper.appendChild(formTitle);
+
+            // Create the form element
+            const formElement = document.createElement("form");
+            formElement.id = form.formId;
+            formElement.className = "mt-6 mb-6";
+
+            form.fields.forEach((field) => {
+            const fieldContainer = document.createElement("div");
+            fieldContainer.className = "mb-4";
+
+            if (!field.hidden) {
+                const label = document.createElement("label");
+                label.textContent = field.label;
+                label.className = "block text-sm font-medium mb-2";
+                fieldContainer.appendChild(label);
+            }
+
+            const input = document.createElement("input");
+            input.type = "number";
+            input.id = field.key;
+            input.value = field.value || 0;
+            input.className = field.hidden ? "hidden" : "input input-bordered w-full";
+            input.addEventListener("input", (e) => {
+                formData[form.formId][field.key] = this.validateAndClamp(e.target.value, field.type);
+            });
+
+            fieldContainer.appendChild(input);
+            formElement.appendChild(fieldContainer);
+
+            // Initialize form data
+            if (!formData[form.formId]) formData[form.formId] = {};
+            formData[form.formId][field.key] = field.value || 0;
+            });
+
+            // Add a submit button
+            const submitButton = document.createElement("button");
+            submitButton.type = "submit";
+            submitButton.textContent = "Send Data";
+            submitButton.className = "btn btn-primary mt-4 w-full";
+            formElement.appendChild(submitButton);
+
+            // Append the form to the wrapper
+            formWrapper.appendChild(formElement);
+
+            // Append the wrapper to the container
+            formContainer.appendChild(formWrapper);
+        });
+    },
+
+  
+    validateAndClamp(value, type) {
+      const intValue = parseInt(value, 10);
+      switch (type) {
+        case "u8":
+          return Math.max(0, Math.min(255, intValue));
+        default:
+          throw new Error(`Unsupported type: ${type}`);
+      }
+    },
+  };
+  

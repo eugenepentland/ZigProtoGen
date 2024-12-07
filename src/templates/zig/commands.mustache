@@ -1,0 +1,87 @@
+const std = @import("std");
+
+pub const Header = struct {
+    {{#header.fields}}
+    {{field_name}}: {{field_type}},
+    {{/header.fields}}
+
+    pub fn serialize() []const u8 {
+        return encode_bytes(Header);
+    }
+
+    pub fn deserialize(buffer: []const u8) Header {
+        return decode_bytes(Header, buffer);
+    }
+};
+
+{{#messages}}
+pub const {{name}} = struct {
+    header: Header,
+    {{#fields}}
+    {{field_name}}: {{field_type}},
+    {{/fields}}
+
+    pub fn init({{#header.fields}}{{^is_const}}{{field_name}}: {{field_type}}, {{/is_const}}{{/header.fields}}{{#fields}}{{field_name}}: {{field_type}}, {{/fields}}) {{name}} {
+        return {{name}}{
+            .header = Header{
+                {{#header.fields}}
+                .{{field_name}} = {{^is_const}}{{field_name}}{{/is_const}}{{#is_const}}{{id}}{{/is_const}},
+                {{/header.fields}}
+            },
+            {{#fields}}
+            .{{field_name}} = {{field_name}},
+            {{/fields}}
+        };
+    }
+
+    pub fn serialize(self: @This()) []const u8 {
+        return encode_bytes(self)[0..];
+    }
+
+    pub fn deserialize(buffer: []const u8) {{name}} {
+        return decode_bytes({{name}}, buffer);
+    }
+};
+{{/messages}}
+
+pub const Message = union(enum) {
+    {{#messages}}
+    {{name}}: {{name}},
+    {{/messages}}
+
+    pub fn typeFromMessageId(id: u8, buffer: []const u8) !Message {
+        switch (id) {
+            {{#messages}}
+            {{id}} => {
+                return Message{ .{{name}} = {{name}}.deserialize(buffer) };
+            },
+            {{/messages}}
+            else => {
+                return error.MessageNotFound;
+            },
+        }
+    }
+};
+
+// Converts the []u8 slice to a struct
+pub inline fn decode_bytes(comptime T: type, buffer: []const u8) T {
+    const byte_count = @sizeOf(T);
+
+    if (buffer.len < byte_count) {
+        // Create a zero-initialized buffer for padding
+        var buff_copy: [byte_count]u8 = [_]u8{0} ** byte_count;
+
+        // Copy available data into the buffer
+        std.mem.copyForwards(u8, buff_copy[0..], buffer);
+
+        // Convert the bytes to the desired type
+        return std.mem.bytesToValue(T, &buff_copy);
+    }
+    return std.mem.bytesToValue(T, buffer[0..byte_count]);
+}
+
+// Converts the struct into a []u8 slice
+pub inline fn encode_bytes(T: anytype) [@sizeOf(@TypeOf(T))]u8 {
+    return std.mem.toBytes(T);
+}
+

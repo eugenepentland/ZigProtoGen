@@ -1,0 +1,27 @@
+pub const Header = struct {
+    message_id: u8,
+    hardware_address: u8,
+};
+
+pub const empty_msg = struct {
+    pub const message_id = 0;
+};
+
+pub const error_msg = struct {
+    pub const message_id = 1;
+    error_id: u8,
+};
+
+pub const rotate_servo = struct {
+    pub const message_id = 10;
+    angle: u8,
+};
+
+pub const set_led_level = struct {
+    pub const message_id = 101;
+    level: u8,
+};
+
+pub const usb_bootloader = struct {
+    pub const message_id = 125;
+};
